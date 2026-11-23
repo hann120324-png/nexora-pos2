@@ -19,7 +19,8 @@ jobs:
         run: |
           mkdir -p android-source
           unzip -q nexora-pos.zip -d android-source
-
+          cp google-services.json android-source/app/google-services.json
+          
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
