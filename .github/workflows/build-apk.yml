@@ -1,4 +1,3 @@
-
 name: Build NEXORA POS APK
 
 on:
@@ -6,11 +5,13 @@ on:
   push:
     paths:
       - 'nexora-pos.zip'
+      - 'google-services.json'
       - '.github/workflows/build-apk.yml'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,7 +21,7 @@ jobs:
           mkdir -p android-source
           unzip -q nexora-pos.zip -d android-source
           cp google-services.json android-source/app/google-services.json
-          
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -32,17 +33,33 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
-      - name: Generate Debug Keystore
+      - name: Restore Debug Keystore
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: NEXORA-DEBUG-KEYSTORE
+          path: android-source/
+
+      - name: Generate Debug Keystore If Missing
         run: |
-          keytool -genkeypair -v \
+          if [ ! -f android-source/debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore android-source/debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Show SHA-1 and SHA-256
+        run: |
+          keytool -list -v \
             -keystore android-source/debug.keystore \
             -storepass android \
-            -alias androiddebugkey \
-            -keypass android \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -dname "CN=Android Debug,O=Android,C=US"
+            -alias androiddebugkey
 
       - name: Build APK
         run: gradle -p android-source assembleDebug
@@ -52,3 +69,9 @@ jobs:
         with:
           name: NEXORA-POS-APK
           path: android-source/app/build/outputs/apk/debug/*.apk
+
+      - name: Upload Debug Keystore
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXORA-DEBUG-KEYSTORE
+          path: android-source/debug.keystore
