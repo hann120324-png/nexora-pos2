@@ -1,0 +1,41 @@
+
+name: Build NEXORA POS APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'nexora-pos.zip'
+      - '.github/workflows/build-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract source
+        run: |
+          mkdir -p android-source
+          unzip -q nexora-pos.zip -d android-source
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Build APK
+        run: gradle -p android-source assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXORA-POS-APK
+          path: android-source/app/build/outputs/apk/debug/*.apk
